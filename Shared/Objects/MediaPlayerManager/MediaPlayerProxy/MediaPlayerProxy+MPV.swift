@@ -95,16 +95,33 @@ class MPVMediaPlayerProxy: VideoMediaPlayerProxy,
     }
 
     func setAudioStream(_ stream: MediaStream) {
-        guard let index = stream.index else { return }
-        mpvController?.setAudioTrack(id: index + 1)
+        guard let playbackItem = manager?.playbackItem else { return }
+        let resolvedIndex = resolvedStreamIndex(
+            for: stream,
+            streamType: .audio,
+            playbackItem: playbackItem
+        )
+        guard let resolvedIndex else { return }
+        // mpv expects per-type 1-based IDs in the order tracks appear in the file.
+        if let position = audioTrackPosition(for: resolvedIndex, mediaSource: playbackItem.mediaSource) {
+            mpvController?.setAudioTrack(id: position + 1)
+        }
     }
 
     func setSubtitleStream(_ stream: MediaStream) {
         guard let index = stream.index else { return }
         if index < 0 {
             mpvController?.setSubtitleTrack(id: nil)
-        } else {
-            mpvController?.setSubtitleTrack(id: index + 1)
+        } else if let playbackItem = manager?.playbackItem {
+            if let resolvedIndex = resolvedStreamIndex(
+                for: stream,
+                streamType: .subtitle,
+                playbackItem: playbackItem
+            ),
+                let id = subtitleTrackID(for: resolvedIndex, mediaSource: playbackItem.mediaSource)
+            {
+                mpvController?.setSubtitleTrack(id: id)
+            }
         }
     }
 
@@ -157,11 +174,44 @@ class MPVMediaPlayerProxy: VideoMediaPlayerProxy,
             (baseItem.startSeconds ?? .zero) - Duration.seconds(Defaults[.VideoPlayer.resumeOffset])
         )
 
+        // mpv uses per-type 1-based track IDs (aid 1, 2, 3... / sid 1, 2, 3...)
+        // based on the order tracks appear in the file.
+        let mpvAudioTrackID: Int? = {
+            guard !baseItem.isLiveStream else { return nil }
+            let defaultIdx = item.selectedAudioStreamIndex ?? mediaSource.defaultAudioStreamIndex
+            guard let defaultIdx, defaultIdx >= 0 else { return nil }
+            let resolvedIndex = resolvedStreamIndex(
+                forIndex: defaultIdx,
+                streamType: .audio,
+                playbackItem: item
+            )
+            if let resolvedIndex,
+               let position = audioTrackPosition(for: resolvedIndex, mediaSource: mediaSource)
+            {
+                return position + 1
+            }
+            let fallbackStreams = mediaSource.mediaStreams?.filter { $0.type == .audio && !isExternalStream($0) } ?? []
+            return fallbackStreams.isEmpty ? nil : 1
+        }()
+
+        let mpvSubtitleTrackID: Int? = {
+            guard !baseItem.isLiveStream else { return nil }
+            let defaultIdx = item.selectedSubtitleStreamIndex ?? mediaSource.defaultSubtitleStreamIndex
+            guard let defaultIdx, defaultIdx >= 0 else { return nil }
+            let resolvedIndex = resolvedStreamIndex(
+                forIndex: defaultIdx,
+                streamType: .subtitle,
+                playbackItem: item
+            )
+            guard let resolvedIndex else { return nil }
+            return subtitleTrackID(for: resolvedIndex, mediaSource: mediaSource)
+        }()
+
         let configuration = MPVPlayerConfiguration(
             url: item.url,
             startSeconds: baseItem.isLiveStream ? nil : startSeconds,
-            audioIndex: baseItem.isLiveStream ? nil : mediaSource.defaultAudioStreamIndex,
-            subtitleIndex: baseItem.isLiveStream ? nil : mediaSource.defaultSubtitleStreamIndex,
+            audioTrackID: mpvAudioTrackID,
+            subtitleTrackID: mpvSubtitleTrackID,
             subtitleSize: 25 - Defaults[.VideoPlayer.Subtitle.subtitleSize],
             subtitleColor: Defaults[.VideoPlayer.Subtitle.subtitleColor],
             subtitleFontName: Defaults[.VideoPlayer.Subtitle.subtitleFontName],
@@ -202,6 +252,115 @@ class MPVMediaPlayerProxy: VideoMediaPlayerProxy,
             pendingConfiguration = nil
             controller.loadFile(config)
         }
+    }
+
+    private func audioTrackPosition(for index: Int, mediaSource: MediaSourceInfo) -> Int? {
+        let audioStreams = mediaSource.mediaStreams?
+            .filter { $0.type == .audio && !isExternalStream($0) } ?? []
+        return audioStreams.firstIndex(where: { $0.index == index })
+    }
+
+    private func subtitleTrackID(for index: Int, mediaSource: MediaSourceInfo) -> Int? {
+        let subtitleStreams = mediaSource.mediaStreams?
+            .filter { $0.type == .subtitle } ?? []
+        let internalSubs = subtitleStreams.filter { !isExternalStream($0) }
+        if let position = internalSubs.firstIndex(where: { $0.index == index }) {
+            return position + 1
+        }
+        let externalSubs = subtitleStreams.filter { isExternalStream($0) }
+        if let position = externalSubs.firstIndex(where: { $0.index == index }) {
+            return internalSubs.count + position + 1
+        }
+        return nil
+    }
+
+    private func isExternalStream(_ stream: MediaStream) -> Bool {
+        (stream.isExternal ?? false) || stream.deliveryMethod == .external
+    }
+
+    private func resolvedStreamIndex(
+        for stream: MediaStream,
+        streamType: MediaStreamType,
+        playbackItem: MediaPlayerItem
+    ) -> Int? {
+        if let type = stream.type, type != streamType { return nil }
+        if let index = stream.index,
+           let direct = playbackItem.mediaSource.mediaStreams?
+               .first(where: { $0.type == streamType && $0.index == index })
+        {
+            return direct.index
+        }
+        if let index = stream.index,
+           let resolvedByPosition = resolvedStreamIndex(
+               forIndex: index,
+               streamType: streamType,
+               playbackItem: playbackItem
+           )
+        {
+            return resolvedByPosition
+        }
+        return originalStreamIndex(for: stream, mediaSource: playbackItem.mediaSource)
+    }
+
+    private func resolvedStreamIndex(
+        forIndex index: Int,
+        streamType: MediaStreamType,
+        playbackItem: MediaPlayerItem
+    ) -> Int? {
+        if let direct = playbackItem.mediaSource.mediaStreams?
+            .first(where: { $0.type == streamType && $0.index == index })
+        {
+            return direct.index
+        }
+        switch streamType {
+        case .audio:
+            guard let position = playbackItem.audioStreams.firstIndex(where: { $0.index == index }) else { return nil }
+            let audioStreams = playbackItem.mediaSource.mediaStreams?
+                .filter { $0.type == .audio && !isExternalStream($0) } ?? []
+            guard position < audioStreams.count else { return nil }
+            return audioStreams[position].index
+        case .subtitle:
+            guard let position = playbackItem.subtitleStreams.firstIndex(where: { $0.index == index }) else { return nil }
+            let subtitleStreams = playbackItem.mediaSource.mediaStreams?
+                .filter { $0.type == .subtitle } ?? []
+            let internalSubs = subtitleStreams.filter { !isExternalStream($0) }
+            let externalSubs = subtitleStreams.filter { isExternalStream($0) }
+            if position < internalSubs.count {
+                return internalSubs[position].index
+            }
+            let externalIndex = position - internalSubs.count
+            guard externalIndex < externalSubs.count else { return nil }
+            return externalSubs[externalIndex].index
+        default:
+            return nil
+        }
+    }
+
+    private func originalStreamIndex(for stream: MediaStream, mediaSource: MediaSourceInfo) -> Int? {
+        guard let streams = mediaSource.mediaStreams else { return nil }
+        let isExternal = isExternalStream(stream)
+        let candidates = streams.filter {
+            $0.type == stream.type && isExternalStream($0) == isExternal
+        }
+        if let match = candidates.first(where: { matchesStream($0, stream) }) {
+            return match.index
+        }
+        if let match = candidates.first(where: { $0.displayTitle == stream.displayTitle && $0.language == stream.language }) {
+            return match.index
+        }
+        return nil
+    }
+
+    private func matchesStream(_ lhs: MediaStream, _ rhs: MediaStream) -> Bool {
+        lhs.displayTitle == rhs.displayTitle &&
+            lhs.language == rhs.language &&
+            lhs.codec == rhs.codec &&
+            lhs.channels == rhs.channels &&
+            lhs.channelLayout == rhs.channelLayout &&
+            lhs.bitRate == rhs.bitRate &&
+            lhs.sampleRate == rhs.sampleRate &&
+            lhs.isDefault == rhs.isDefault &&
+            lhs.isForced == rhs.isForced
     }
 }
 
@@ -246,8 +405,10 @@ extension MPVMediaPlayerProxy: MPVControllerDelegate {
 struct MPVPlayerConfiguration {
     let url: URL
     let startSeconds: Duration?
-    let audioIndex: Int?
-    let subtitleIndex: Int?
+    /// mpv 1-based audio track ID (aid)
+    let audioTrackID: Int?
+    /// mpv 1-based subtitle track ID (sid), nil to disable
+    let subtitleTrackID: Int?
     let subtitleSize: Int
     let subtitleColor: Color
     let subtitleFontName: String
@@ -377,22 +538,22 @@ class MPVController: @unchecked Sendable {
             setOption("start", value: "\(startSeconds.seconds)")
         }
 
-        // Set audio/subtitle tracks
-        if let audioIndex = configuration.audioIndex, audioIndex >= 0 {
-            command("set", args: ["aid", "\(audioIndex + 1)"])
-        }
-
-        if let subtitleIndex = configuration.subtitleIndex {
-            if subtitleIndex >= 0 {
-                command("set", args: ["sid", "\(subtitleIndex + 1)"])
-            } else {
-                command("set", args: ["sid", "no"])
-            }
-        }
-
         // Add external subtitles
         for subtitle in configuration.externalSubtitles {
             command("sub-add", args: [subtitle.url.absoluteString, "auto", subtitle.title])
+        }
+
+        // Set audio/subtitle tracks
+        if let audioTrackID = configuration.audioTrackID, audioTrackID >= 0 {
+            command("set", args: ["aid", "\(audioTrackID)"])
+        }
+
+        if let subtitleTrackID = configuration.subtitleTrackID {
+            if subtitleTrackID >= 0 {
+                command("set", args: ["sid", "\(subtitleTrackID)"])
+            } else {
+                command("set", args: ["sid", "no"])
+            }
         }
     }
 
