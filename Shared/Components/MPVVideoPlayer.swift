@@ -103,15 +103,19 @@ struct MPVVideoPlayer: View {
                 manager.stop()
             }
             .onReceive(manager.$playbackItem) { newItem in
-                containerState.isAspectFilled = false
-                audioOffset = .zero
-                subtitleOffset = .zero
+                DispatchQueue.main.async {
+                    containerState.isAspectFilled = false
+                    audioOffset = .zero
+                    subtitleOffset = .zero
 
-                containerState.scrubbedSeconds.value = newItem?.baseItem.startSeconds ?? .zero
+                    containerState.scrubbedSeconds.value = newItem?.baseItem.startSeconds ?? .zero
+                }
             }
             .onReceive(manager.$state) { newState in
-                if newState == .stopped, !isBeingDismissedByTransition {
-                    router.dismiss()
+                DispatchQueue.main.async {
+                    if newState == .stopped, !isBeingDismissedByTransition {
+                        router.dismiss()
+                    }
                 }
             }
             .alert(
