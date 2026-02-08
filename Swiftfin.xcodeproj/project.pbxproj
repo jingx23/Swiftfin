@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		43A6D0462F38D4F500A89054 /* MPVKit-GPL in Frameworks */ = {isa = PBXBuildFile; productRef = 43A6D0452F38D4F500A89054 /* MPVKit-GPL */; };
+		43A6D0482F38D52100A89054 /* MPVKit-GPL in Frameworks */ = {isa = PBXBuildFile; productRef = 43A6D0472F38D52100A89054 /* MPVKit-GPL */; };
 		53ABFDDC267972BF00886593 /* TVServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 53ABFDDB267972BF00886593 /* TVServices.framework */; };
 		62666DF727E5012C00EC0ECD /* MobileVLCKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 53D5E3DC264B47EE00BADDC8 /* MobileVLCKit.xcframework */; };
 		62666DF827E5012C00EC0ECD /* MobileVLCKit.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 53D5E3DC264B47EE00BADDC8 /* MobileVLCKit.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -283,6 +285,7 @@
 				62666E2127E501E400EC0ECD /* CoreVideo.framework in Frameworks */,
 				E1392FED2BA218A80034110D /* SwiftUIIntrospect in Frameworks */,
 				E13AF3B828A0C598009093AB /* NukeExtensions in Frameworks */,
+				43A6D0482F38D52100A89054 /* MPVKit-GPL in Frameworks */,
 				E1575E58293E7685001665B1 /* Files in Frameworks */,
 				E1B5F7A729577BCE004B26CF /* Pulse in Frameworks */,
 				E1A09F792D05935A00835265 /* CollectionHStack in Frameworks */,
@@ -326,6 +329,7 @@
 				E13DD3D327168E65009D4DAF /* Defaults in Frameworks */,
 				E1002B682793CFBA00E47059 /* Algorithms in Frameworks */,
 				E113A2AA2B5A179A009CAAAA /* CollectionVGrid in Frameworks */,
+				43A6D0462F38D4F500A89054 /* MPVKit-GPL in Frameworks */,
 				62666E1127E501B900EC0ECD /* UIKit.framework in Frameworks */,
 				E15210582946DF1B00375CC2 /* PulseUI in Frameworks */,
 				E1153DA42BBA614F00424D36 /* CollectionVGrid in Frameworks */,
@@ -529,6 +533,7 @@
 				E1137D302E090C230091EB60 /* VLCUI */,
 				E1E2D7BE2E3FD936004E2E5F /* Transmission */,
 				E14000BC2EF622AC00354A3C /* StatefulMacros */,
+				43A6D0472F38D52100A89054 /* MPVKit-GPL */,
 			);
 			productName = "JellyfinPlayer tvOS";
 			productReference = 535870602669D21600D05A09 /* Swiftfin tvOS.app */;
@@ -606,6 +611,7 @@
 				E19FA19F2E84F0A800F5A60D /* StatefulMacros */,
 				E1B9743A2E86F51D008CED48 /* StatefulMacros */,
 				E1C5CB812EF61A650047C249 /* StatefulMacros */,
+				43A6D0452F38D4F500A89054 /* MPVKit-GPL */,
 			);
 			productName = JellyfinPlayer;
 			productReference = 5377CBF1263B596A003A4E83 /* Swiftfin iOS.app */;
@@ -686,6 +692,8 @@
 				mn,
 				km,
 				lv,
+				peo,
+				fa,
 			);
 			mainGroup = 5377CBE8263B596A003A4E83;
 			packageReferences = (
@@ -715,6 +723,7 @@
 				E164308A2E3AA9710028D4E8 /* XCRemoteSwiftPackageReference "Transmission" */,
 				E13CCE482E6C077D0070965F /* XCRemoteSwiftPackageReference "LNPopupUI" */,
 				E1C404CB2EF61D4C00959C4F /* XCRemoteSwiftPackageReference "StatefulMacro" */,
+				43A6D0442F38D4F500A89054 /* XCRemoteSwiftPackageReference "MPVKit" */,
 			);
 			productRefGroup = 5377CBF2263B596A003A4E83 /* Products */;
 			projectDirPath = "";
@@ -1183,6 +1192,14 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		43A6D0442F38D4F500A89054 /* XCRemoteSwiftPackageReference "MPVKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mpvkit/MPVKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.41.0;
+			};
+		};
 		5335256F265EA0A0006CCA86 /* XCRemoteSwiftPackageReference "SwiftUI-Introspect" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/siteline/SwiftUI-Introspect";
@@ -1394,6 +1411,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		43A6D0452F38D4F500A89054 /* MPVKit-GPL */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 43A6D0442F38D4F500A89054 /* XCRemoteSwiftPackageReference "MPVKit" */;
+			productName = "MPVKit-GPL";
+		};
+		43A6D0472F38D52100A89054 /* MPVKit-GPL */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 43A6D0442F38D4F500A89054 /* XCRemoteSwiftPackageReference "MPVKit" */;
+			productName = "MPVKit-GPL";
+		};
 		62666E3827E502CE00EC0ECD /* SwizzleSwift */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 62666E3727E502CE00EC0ECD /* XCRemoteSwiftPackageReference "SwizzleSwift" */;
