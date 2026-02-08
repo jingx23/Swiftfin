@@ -102,9 +102,12 @@ struct VideoPlayerViewShim: View {
 
     var body: some View {
         Group {
-            if Defaults[.VideoPlayer.videoPlayerType] == .swiftfin {
+            switch Defaults[.VideoPlayer.videoPlayerType] {
+            case .swiftfin:
                 VideoPlayer()
-            } else {
+            case .mpv:
+                MPVVideoPlayer()
+            case .native:
                 NativeVideoPlayer()
             }
         }
