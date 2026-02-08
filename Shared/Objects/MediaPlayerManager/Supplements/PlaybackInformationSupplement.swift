@@ -54,7 +54,9 @@ extension PlaybackInformationSupplement {
             }
         }
 
-        var tvOSView: some View {}
+        var tvOSView: some View {
+            EmptyView()
+        }
     }
 }
 
